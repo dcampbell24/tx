@@ -1,4 +1,5 @@
 use csv::Trim;
+use log::info;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -27,7 +28,7 @@ impl App {
         for result in rdr.deserialize::<Transaction>() {
             match result {
                 Ok(tx) => self.process_transaction(tx),
-                Err(e) => eprintln!("{}", e),
+                Err(e) => info!("{}", e),
             }
         }
         Ok(())
@@ -45,12 +46,12 @@ impl App {
                 let amount = if tx.amount.is_some() {
                     tx.amount.unwrap()
                 } else {
-                    eprintln!("tx {}: invalid deposit, no amount", tx.tx_id);
+                    info!("tx {}: invalid deposit, no amount", tx.tx_id);
                     return;
                 };
 
                 if self.transactions.contains_key(&tx.tx_id) {
-                    eprintln!(
+                    info!(
                         "tx {}: {} already deposited to account {}",
                         tx.tx_id, amount, tx.client_id
                     );
@@ -60,7 +61,7 @@ impl App {
                 account.available += amount;
                 account.total += amount;
 
-                eprintln!(
+                info!(
                     "tx {}: deposited {} into account {}",
                     tx.tx_id, amount, tx.client_id
                 );
@@ -71,9 +72,15 @@ impl App {
                         account.available -= amount;
                         account.held += amount;
                     }
-                    eprintln!("tx {} disputed by client {} over {:?}", tx.tx_id, tx.client_id, tx.amount);
+                    info!(
+                        "tx {} disputed by client {} over {:?}",
+                        tx.tx_id, tx.client_id, tx.amount
+                    );
                 } else {
-                    eprintln!("tx {} disputed, but we have no record of this transaction", tx.tx_id);
+                    info!(
+                        "tx {} disputed, but we have no record of this transaction",
+                        tx.tx_id
+                    );
                 }
             }
             Type::Resolve => {}
@@ -81,19 +88,19 @@ impl App {
                 let amount = if tx.amount.is_some() {
                     tx.amount.unwrap()
                 } else {
-                    eprintln!("tx {}: invalid withdrawal, no amount", tx.tx_id);
+                    info!("tx {}: invalid withdrawal, no amount", tx.tx_id);
                     return;
                 };
 
                 if amount > account.available {
-                    eprintln!(
+                    info!(
                         "tx {}: account {} has insufficient funds to withdraw {}",
                         tx.tx_id, tx.client_id, amount
                     );
                 } else {
                     account.available -= amount;
                     account.total -= amount;
-                    eprintln!(
+                    info!(
                         "tx {}: withdrew {} from account {}",
                         tx.tx_id, amount, tx.client_id
                     );
