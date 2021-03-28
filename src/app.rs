@@ -6,7 +6,7 @@ use std::error::Error;
 use std::io;
 
 use crate::account::{Account, ClientId};
-use crate::transaction::{Transaction, TxId};
+use crate::transaction::{Transaction, TxId, Type};
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -34,18 +34,57 @@ impl App {
     }
 
     fn process_transaction(&mut self, tx: Transaction) {
-        if self.transactions.contains_key(&tx.tx_id) {
-            eprintln!("ignoring already processed transaction {}", tx.tx_id);
-            return;
-        }
-
-        eprintln!("processing {:?} ...", tx);
         let account = self
             .client_accounts
             .entry(tx.client_id)
             .or_insert_with(|| Account::new(tx.client_id));
 
-        account.process_transaction(&tx);
+        match tx.type_ {
+            Type::Chargeback => {}
+            Type::Deposit => {
+                if self.transactions.contains_key(&tx.tx_id) {
+                    eprintln!(
+                        "tx {}: {} already deposited to account {}",
+                        tx.tx_id, tx.amount, tx.client_id
+                    );
+                    return;
+                }
+
+                account.available += tx.amount;
+                account.total += tx.amount;
+
+                eprintln!(
+                    "tx {}: deposited {} into account {}",
+                    tx.tx_id, tx.amount, tx.client_id
+                );
+            }
+            Type::Dispute => {
+                if let Some(tx) = self.transactions.get(&tx.tx_id) {
+                    account.available -= tx.amount;
+                    account.held += tx.amount;
+                    eprintln!("tx {} disputed by client {} over {}", tx.tx_id, tx.client_id, tx.amount);
+                } else {
+                    eprintln!("tx {} disputed, but we have no record of this transaction", tx.tx_id);
+                }
+            }
+            Type::Resolve => {}
+            Type::Withdrawal | Type::Withdraw => {
+                if tx.amount > account.available {
+                    eprintln!(
+                        "tx {}: account {} has insufficient funds to withdraw {}",
+                        tx.tx_id, tx.client_id, tx.amount
+                    );
+                } else {
+                    account.available -= tx.amount;
+                    account.total -= tx.amount;
+                    eprintln!(
+                        "tx {}: withdrew {} from account {}",
+                        tx.tx_id, tx.amount, tx.client_id
+                    );
+                }
+            }
+        }
+
         self.transactions.insert(tx.tx_id, tx);
     }
 

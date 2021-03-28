@@ -25,8 +25,16 @@ pub struct Transaction {
 
 #[derive(Debug, Deserialize)]
 pub enum Type {
-    #[serde(rename = "withdrawal")]
-    Withdrawal,
+    #[serde(rename = "chargeback")]
+    Chargeback,
     #[serde(rename = "deposit")]
     Deposit,
+    #[serde(rename = "dispute")]
+    Dispute,
+    #[serde(rename = "resolve")]
+    Resolve,
+    #[serde(rename = "withdraw")]
+    Withdraw,
+    #[serde(rename = "withdrawal")]
+    Withdrawal,
 }
