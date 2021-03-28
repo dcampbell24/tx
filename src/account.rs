@@ -5,6 +5,7 @@ pub type ClientId = u16;
 
 #[derive(Debug, Serialize)]
 pub struct Account {
+    #[serde(rename = "client")]
     pub client_id: ClientId,
     /// ```
     /// available = total - held
