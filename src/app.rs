@@ -41,7 +41,31 @@ impl App {
             .or_insert_with(|| Account::new(tx.client_id));
 
         match tx.type_ {
-            Type::Chargeback => {}
+            Type::Chargeback => {
+                if let Some(tx_chargeback) = self.transactions.get_mut(&tx.tx_id) {
+                    if tx_chargeback.client_id != tx.client_id {
+                        info!("client id in chargeback and chargeback transaction do not match");
+                        return;
+                    }
+
+                    if tx_chargeback.disputed != Some(true) {
+                        info!("tx {} was not disputed and can't be charged back", tx.tx_id);
+                        return;
+                    }
+
+                    if let Some(amount) = tx_chargeback.amount {
+                        account.held -= amount;
+                        account.total -= amount;
+                    }
+                    tx_chargeback.disputed = Some(false);
+                    account.locked = true;
+
+                    info!(
+                        "tx {} dispute charged back {:?} by client {} and account locked",
+                        tx.tx_id, tx_chargeback.amount, tx_chargeback.client_id
+                    );
+                }
+            }
             Type::Deposit => {
                 let amount = if tx.amount.is_some() {
                     tx.amount.unwrap()
