@@ -42,44 +42,60 @@ impl App {
         match tx.type_ {
             Type::Chargeback => {}
             Type::Deposit => {
+                let amount = if tx.amount.is_some() {
+                    tx.amount.unwrap()
+                } else {
+                    eprintln!("tx {}: invalid deposit, no amount", tx.tx_id);
+                    return;
+                };
+
                 if self.transactions.contains_key(&tx.tx_id) {
                     eprintln!(
                         "tx {}: {} already deposited to account {}",
-                        tx.tx_id, tx.amount, tx.client_id
+                        tx.tx_id, amount, tx.client_id
                     );
                     return;
                 }
 
-                account.available += tx.amount;
-                account.total += tx.amount;
+                account.available += amount;
+                account.total += amount;
 
                 eprintln!(
                     "tx {}: deposited {} into account {}",
-                    tx.tx_id, tx.amount, tx.client_id
+                    tx.tx_id, amount, tx.client_id
                 );
             }
             Type::Dispute => {
                 if let Some(tx) = self.transactions.get(&tx.tx_id) {
-                    account.available -= tx.amount;
-                    account.held += tx.amount;
-                    eprintln!("tx {} disputed by client {} over {}", tx.tx_id, tx.client_id, tx.amount);
+                    if let Some(amount) = tx.amount {
+                        account.available -= amount;
+                        account.held += amount;
+                    }
+                    eprintln!("tx {} disputed by client {} over {:?}", tx.tx_id, tx.client_id, tx.amount);
                 } else {
                     eprintln!("tx {} disputed, but we have no record of this transaction", tx.tx_id);
                 }
             }
             Type::Resolve => {}
             Type::Withdrawal | Type::Withdraw => {
-                if tx.amount > account.available {
+                let amount = if tx.amount.is_some() {
+                    tx.amount.unwrap()
+                } else {
+                    eprintln!("tx {}: invalid withdrawal, no amount", tx.tx_id);
+                    return;
+                };
+
+                if amount > account.available {
                     eprintln!(
                         "tx {}: account {} has insufficient funds to withdraw {}",
-                        tx.tx_id, tx.client_id, tx.amount
+                        tx.tx_id, tx.client_id, amount
                     );
                 } else {
-                    account.available -= tx.amount;
-                    account.total -= tx.amount;
+                    account.available -= amount;
+                    account.total -= amount;
                     eprintln!(
                         "tx {}: withdrew {} from account {}",
-                        tx.tx_id, tx.amount, tx.client_id
+                        tx.tx_id, amount, tx.client_id
                     );
                 }
             }

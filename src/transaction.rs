@@ -20,7 +20,7 @@ pub struct Transaction {
     #[serde(rename = "tx")]
     pub tx_id: TxId,
     // A decimal with a precision to four places.
-    pub amount: Decimal,
+    pub amount: Option<Decimal>,
 }
 
 #[derive(Debug, Deserialize)]
