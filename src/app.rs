@@ -62,19 +62,27 @@ impl App {
                 account.total += amount;
 
                 info!(
-                    "tx {}: deposited {} into account {}",
+                    "tx {}: depositing {} into account {}",
                     tx.tx_id, amount, tx.client_id
                 );
+                self.transactions.insert(tx.tx_id, tx);
             }
             Type::Dispute => {
-                if let Some(tx) = self.transactions.get(&tx.tx_id) {
-                    if let Some(amount) = tx.amount {
+                if let Some(tx_disputed) = self.transactions.get_mut(&tx.tx_id) {
+                    if tx_disputed.client_id != tx.client_id {
+                        info!("client id in dispute and disputed transaction do not match");
+                        return;
+                    }
+
+                    if let Some(amount) = &tx_disputed.amount {
                         account.available -= amount;
                         account.held += amount;
                     }
+                    tx_disputed.disputed = Some(true);
+
                     info!(
                         "tx {} disputed by client {} over {:?}",
-                        tx.tx_id, tx.client_id, tx.amount
+                        tx.tx_id, tx_disputed.client_id, &tx_disputed.amount
                     );
                 } else {
                     info!(
@@ -83,7 +91,35 @@ impl App {
                     );
                 }
             }
-            Type::Resolve => {}
+            Type::Resolve => {
+                if let Some(tx_resolved) = self.transactions.get_mut(&tx.tx_id) {
+                    if tx_resolved.client_id != tx.client_id {
+                        info!("client id in resolve and resolved transaction do not match");
+                        return;
+                    }
+
+                    if tx_resolved.disputed != Some(true) {
+                        info!("tx {} was not disputed and can't be resolved", tx.tx_id);
+                        return;
+                    }
+
+                    if let Some(amount) = tx_resolved.amount {
+                        account.available += amount;
+                        account.held -= amount;
+                    }
+                    tx_resolved.disputed = Some(false);
+
+                    info!(
+                        "tx {} dispute resolved by client {} over {:?}",
+                        tx.tx_id, tx_resolved.client_id, tx_resolved.amount
+                    );
+                } else {
+                    info!(
+                        "tx {} resolved, but we have no record of this transaction",
+                        tx.tx_id
+                    );
+                }
+            }
             Type::Withdrawal | Type::Withdraw => {
                 let amount = if tx.amount.is_some() {
                     tx.amount.unwrap()
@@ -101,14 +137,13 @@ impl App {
                     account.available -= amount;
                     account.total -= amount;
                     info!(
-                        "tx {}: withdrew {} from account {}",
+                        "tx {}: withdrawing {} from account {}",
                         tx.tx_id, amount, tx.client_id
                     );
+                    self.transactions.insert(tx.tx_id, tx);
                 }
             }
         }
-
-        self.transactions.insert(tx.tx_id, tx);
     }
 
     pub fn print_accounts_as_csv(&self) -> Result<(), Box<dyn Error>> {

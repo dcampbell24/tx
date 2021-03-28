@@ -21,6 +21,7 @@ pub struct Transaction {
     pub tx_id: TxId,
     // A decimal with a precision to four places.
     pub amount: Option<Decimal>,
+    pub disputed: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
