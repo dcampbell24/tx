@@ -40,6 +40,11 @@ impl App {
             .entry(tx.client_id)
             .or_insert_with(|| Account::new(tx.client_id));
 
+        if account.locked {
+            info!("client account {} is locked so transactions relating to it are invalid", tx.client_id);
+            return;
+        }
+
         match tx.type_ {
             Type::Chargeback => {
                 if let Some(tx_chargeback) = self.transactions.get_mut(&tx.tx_id) {
