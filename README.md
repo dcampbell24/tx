@@ -35,3 +35,11 @@ client_id,available,held,total,locked
 1,1.5,0.0000,1.5,false
 2,2,0.0000,2,false
 ```
+
+## Correctness
+My belief in the correctness of this application is based mainly off of an
+attempt to use the type system to enforce correctness and running integration
+tests against sample data sets. In order to understand what is going on there
+are lots of log messages when logging is turned on. The project would benefit
+from some tests that can be run by `cargo test` and the ability to run
+benchmarks on the nightly version of Rust to test the throughput of this engine.
